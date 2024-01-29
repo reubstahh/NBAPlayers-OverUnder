@@ -1,5 +1,5 @@
-# Reuben George
 import requests
+from datetime import datetime
 
 def get_player_id(player_name):
     response = requests.get(f"https://www.balldontlie.io/api/v1/players?search={player_name}")
@@ -9,17 +9,24 @@ def get_player_id(player_name):
     else:
         return None
 
+def get_current_season():
+    current_year = datetime.now().year
+    current_month = datetime.now().month
+    # The NBA season starts in October; before October, subtract 1 from the current year
+    season_year = current_year if current_month >= 10 else current_year - 1
+    return season_year
+
 def get_recent_games(player_id, num_games):
-    response = requests.get(f"https://www.balldontlie.io/api/v1/stats?player_ids[]={player_id}&per_page={num_games}")
+    season_year = get_current_season()
+    response = requests.get(f"https://www.balldontlie.io/api/v1/stats?seasons[]={season_year}&player_ids[]={player_id}&per_page=100")
     games = response.json()['data']
-    print("Games data fetched:", games)  # Print the games data
-    return games
+    # Sort games by date in descending order and pick the last 'num_games' games
+    sorted_games = sorted(games, key=lambda x: datetime.strptime(x['game']['date'], '%Y-%m-%dT%H:%M:%S.%fZ'), reverse=True)
+    return sorted_games[:num_games]
 
 def calculate_probability(games, stat, benchmark):
     count = sum(1 for game in games if game[stat] > benchmark)
     return count / len(games) if games else 0
-
-
 
 def main():
     player_name = input("Enter player name (e.g., 'Stephen Curry'): ")
@@ -37,3 +44,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
